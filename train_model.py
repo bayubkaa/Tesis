@@ -1,11 +1,14 @@
 '''Train CIFAR10 with PyTorch.'''
+from ast import arg
 import torch
 import torch.nn as nn
 
 from modules.resnet import ResNet50
+from modules.mobilenetv2 import MobileNetV2
 
 import os
 import argparse
+import json
 
 #from models import *
 from utils.utils_progbar import progress_bar
@@ -25,7 +28,14 @@ writer = SummaryWriter('runs/EQ')
 parser = argparse.ArgumentParser(description='PyTorch CIFAR10 Training')
 parser.add_argument('--resume', '-r', action='store_true',
                     help='resume from checkpoint')
+
+parser.add_argument('--model', action='store', type=str, help='pilih model')
+parser.add_argument('--ratio_pruned', action='store', type=float, help='pilih model')
+
 args = parser.parse_args()
+
+if args.model is None:
+    assert False, "define the model!"
 
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
 best_acc = 0  # best test accuracy
@@ -54,7 +64,17 @@ classes = ('EQ', 'NO')
 print('==> Building model..')
 from a import get_pruned_resnet50
 
-net = get_pruned_resnet50()
+if args.model == "resnet50":
+    net = ResNet50(num_classes=num_class)
+    print("model: ResNet50")
+elif args.model == "mobilenetv2":
+    net = MobileNetV2(ch_in=3, n_classes=num_class)
+    print("model: MobileNetV2")
+elif args.model == "prune_resnet50":
+    
+    net = get_pruned_resnet50(norm_ord=2, ratio=args.ratio_pruned)
+    print(f"model: ResNet50-pruned with ratio {args.ratio_pruned}")
+
 #net = ResNet50(num_classes=num_class)#MobileNetV2(ch_in=3, n_classes=num_class)#ResNet50(num_classes=len(classes))
 net = net.to(device)
 
@@ -62,7 +82,7 @@ if args.resume:
     # Load checkpoint.
     print('==> Resuming from checkpoint..')
     assert os.path.isdir('checkpoint'), 'Error: no checkpoint directory found!'
-    checkpoint = torch.load('./checkpoint/ckpt.pth')
+    checkpoint = torch.load(f'./checkpoint/{args.model}_ckpt.pth')
     net.load_state_dict(checkpoint['net'])
     best_acc = checkpoint['acc']
     start_epoch = checkpoint['epoch']
@@ -70,7 +90,6 @@ if args.resume:
 criterion = nn.CrossEntropyLoss()
 optimizer = torch.optim.Adam(net.parameters(), lr=learning_rate)
 scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=200)
-
 
 # Training
 performance = {}
@@ -132,8 +151,8 @@ def test(epoch):
             progress_bar(batch_idx, len(testloader), 'Loss: %.3f | Acc: %.3f%% (%d/%d)'
                          % (average_val_loss, val_acc, correct, total))
 
-    performance["val_loss"].append(average_train_loss)
-    performance["val_acc"].append(train_acc)
+    performance["val_loss"].append(average_val_loss)
+    performance["val_acc"].append(val_acc)
     # Save checkpoint.
     acc = 100.*correct/total
     if acc > best_acc:
@@ -145,12 +164,18 @@ def test(epoch):
         }
         if not os.path.isdir('checkpoint'):
             os.mkdir('checkpoint')
-        torch.save(state, './checkpoint/ckpt.pth')
+        torch.save(state, f'./checkpoint/{args.model}_ckpt.pth')
         best_acc = acc
+
+def save_metrics_json():
+    with open(f"metrics/{args.model}.json", "w") as outfile:
+        json.dump(performance, outfile)
 
 
 for epoch in range(start_epoch, start_epoch+num_epochs):
+    save_metrics_json()
     train(epoch)
     test(epoch)
     scheduler.step()
+
 

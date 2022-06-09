@@ -102,6 +102,36 @@ def pick_filter_to_prune(conv, norm_ord, dim=(1,2)):
     norm = torch.norm(weights, p=norm_ord, dim=dim)
     filter_index = torch.argmin(norm)
     return filter_index
+
+
+def pick_neuron_to_remove(linear, norm):
+    old_weights = linear.weight.data
+
+    norm = torch.norm(old_weights, p=1, dim=0)
+    neuron_index = np.argmin(norm)
+    return neuron_index
+
+def get_new_dependant_nn(linear, neuron_index):
+    new_nn = torch.nn.Linear(in_features=linear.in_features-1, out_features=linear.out_features)
+    old_weights = linear.weight.data.cpu().numpy()
+
+    # catatan: untuk layer terakhir saja, selebihnya harus riset lagi
+    new_weights = np.delete(old_weights, [neuron_index], 1)
+    new_nn.weight.data = torch.from_numpy(new_weights)
+    return new_nn
+
+
+# lin = torch.nn.Linear(in_features=10, out_features=2)
+# neuron_index = pick_neuron_to_remove(lin, 1)
+# print(neuron_index, get_new_dependant_nn(lin, neuron_index)) 
+
+
+
+# new_weights[:filter_index] = old_weights[:filter_index]
+# new_weights[filter_index : ] = old_weights[filter_index + 1 :]
+# new_nn.weight.data = torch.from_numpy(new_weights)
+
+
 #bn = torch.nn.BatchNorm2d(10)
 #new_bn = get_new_bn(bn, 5)
 #print(list(new_bn.parameters()))

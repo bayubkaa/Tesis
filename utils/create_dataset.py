@@ -49,7 +49,7 @@ class CharData(Dataset):
         return (img, y_label)
 
 def train_val_dataset(dataset, val_split=0.10):
-    train_idx, val_idx = train_test_split(list(range(len(dataset))), test_size=val_split)
+    train_idx, val_idx = train_test_split(list(range(len(dataset))), test_size=val_split, random_state=1)
     datasets = {}
     datasets['train'] = Subset(dataset, train_idx)
     datasets['val'] = Subset(dataset, val_idx)

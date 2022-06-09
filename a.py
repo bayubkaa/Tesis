@@ -1,11 +1,17 @@
+from tabnanny import check
 from modules.resnet import ResNet50
 from utils.pruning_utils import get_new_conv, get_new_bn, get_new_dependant_conv, get_model_size
 from utils.pruning_utils import pick_filter_to_prune
 
+from utils.pruning_utils import get_new_dependant_nn
+from utils.pruning_utils import pick_neuron_to_remove
+
 import torch
 model = ResNet50(num_classes=2)
+checkpoint = torch.load('checkpoint/resnet50_ckpt.pth')
+model.load_state_dict(checkpoint["net"])
 
-print(get_model_size(model))
+print(f'old model:{get_model_size(model)}')
 
 list_module = [[(model, 'conv1'), 
                 (model, 'bn1'),
@@ -285,7 +291,7 @@ list_module = [[(model, 'conv1'),
                 (model.layer4[0], 'conv_id'),
                 (model.layer3[0], 'conv_id')],
 
-                #add from layer 1
+                #add from layer 4
                 ['add',
                 (model.layer4[1], 'conv1'),
                 (model.layer4[0], 'conv_id')],
@@ -293,13 +299,11 @@ list_module = [[(model, 'conv1'),
                 ['add',
                 (model.layer4[2], 'conv1'),
                 (model.layer4[0], 'conv_id')],
-
-                
                 ]
 
 
-def prune_model():
-    maximum_pruned_ratio = 0.5
+def prune_model(norm_ord, ratio=0.5):
+    maximum_pruned_ratio = ratio
     threshold = 1 - maximum_pruned_ratio
 
     min_filter_in_layer = 10
@@ -323,7 +327,7 @@ def prune_model():
                 new_input_size *= multiplier
                 for _ in range(conv.in_channels - new_input_size):
                     conv = getattr(prune_module_tup[0], prune_module_tup[1])
-                    filter_index = pick_filter_to_prune(conv, norm_ord=2, dim=(0,2))
+                    filter_index = pick_filter_to_prune(conv, norm_ord=norm_ord, dim=(0,2))
                     new_conv = get_new_dependant_conv(conv, filter_index)
                     setattr(prune_module_tup[0], prune_module_tup[1], new_conv)
                 
@@ -337,7 +341,7 @@ def prune_model():
                 initial_total_filter = initial_conv.out_channels
                 while True:
                     conv = getattr(modules_prune, attribute_prune)
-                    filter_index = pick_filter_to_prune(conv, norm_ord=2)
+                    filter_index = pick_filter_to_prune(conv, norm_ord=norm_ord)
                     #print("filter index to be pruned: " + str(filter_index))
                     new_conv = get_new_conv(conv, filter_index)
                     setattr(modules_prune, attribute_prune, new_conv)
@@ -350,17 +354,26 @@ def prune_model():
                         else:
                             modules_dep_layer = get_new_bn(modules_dep_layer, filter_index)
                         setattr(modules_dep, attribute_dep, modules_dep_layer)
+                    
                     if conv.out_channels / initial_total_filter <= threshold or conv.out_channels <= min_filter_in_layer:
                         #print(initial_total_filter, conv.out_channels)
                         break
+                # neuron_index = pick_neuron_to_remove(model.fc, norm_ord)
+                # model.fc = get_new_dependant_nn(model.fc, neuron_index)
+            for j in range(model.fc.in_features - model.layer4[0].conv_id.out_channels):
+                neuron_index = pick_neuron_to_remove(model.fc, norm_ord)
+                model.fc = get_new_dependant_nn(model.fc, neuron_index)
     
-    
 
 
-dummy_input = torch.randn((1,3,224,224), requires_grad=True)  
-prune_model()
-model(dummy_input)
-print(get_model_size(model))
-
-def get_pruned_resnet50():
+def get_pruned_resnet50(norm_ord, ratio):
+    prune_model(norm_ord=norm_ord, ratio=ratio)
+    print(f'pruned model:{get_model_size(model)}')
     return model
+
+
+if __name__ == "__main__":
+    model = get_pruned_resnet50(norm_ord=2, ratio=0.5)
+    dummy_input = torch.randn((1,3,224,224), requires_grad=True)  
+    model(dummy_input)
+    
