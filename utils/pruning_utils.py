@@ -108,7 +108,7 @@ def pick_neuron_to_remove(linear, norm):
     old_weights = linear.weight.data
 
     norm = torch.norm(old_weights, p=1, dim=0)
-    neuron_index = np.argmin(norm)
+    neuron_index = np.argmin(norm.cpu())
     return neuron_index
 
 def get_new_dependant_nn(linear, neuron_index):

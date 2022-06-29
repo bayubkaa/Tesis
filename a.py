@@ -11,7 +11,7 @@ model = ResNet50(num_classes=2)
 checkpoint = torch.load('checkpoint/resnet50_ckpt.pth')
 model.load_state_dict(checkpoint["net"])
 
-print(f'old model:{get_model_size(model)}')
+#print(f'old model:{get_model_size(model)}')
 
 list_module = [[(model, 'conv1'), 
                 (model, 'bn1'),

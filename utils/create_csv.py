@@ -6,7 +6,7 @@ device = ("cuda" if torch.cuda.is_available() else "cpu")
 train_df = pd.DataFrame(columns=["img_name","label"])
 
 #dir = "./char_data"
-dir = "./data_dummy"
+dir = "./data_testing"
 dir_list = os.listdir(dir)
 dir_list.sort()
 print(dir_list)
@@ -19,4 +19,4 @@ for i, class_folder in enumerate(dir_list):
         print(class_folder, file_img)
         train_df.loc[loc] = ['.'+os.path.join(dir, class_folder, file_img)] + [i]
         loc+=1
-train_df.to_csv (r'data_annotations.csv', index = False, header=True)
+train_df.to_csv (r'data_annotations_testing.csv', index = False, header=True)

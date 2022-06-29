@@ -3,7 +3,7 @@ from ast import arg
 import torch
 import torch.nn as nn
 
-from modules.resnet import ResNet50
+from modules.resnet import ResNet18, ResNet50
 from modules.mobilenetv2 import MobileNetV2
 
 import os
@@ -53,7 +53,7 @@ num_epochs = config['num_epochs']
 batch_size = config['batch_size']
 learning_rate = config['learning_rate']
 
-trainloader, testloader = generate_data_loader(root_dir="data_dummy",
+trainloader, testloader = generate_data_loader(root_dir="data_training",
                                         annotation_file="data_annotations.csv", 
                                         img_size=img_size, 
                                         batch_size=batch_size)   
@@ -67,13 +67,29 @@ from a import get_pruned_resnet50
 if args.model == "resnet50":
     net = ResNet50(num_classes=num_class)
     print("model: ResNet50")
+elif args.model == "resnet18":
+    net = ResNet18(num_classes=num_class)
+    print("model: ResNet18")
 elif args.model == "mobilenetv2":
     net = MobileNetV2(ch_in=3, n_classes=num_class)
     print("model: MobileNetV2")
 elif args.model == "prune_resnet50":
-    
+    args.model = args.model + "_pruned_" + str(int(args.ratio_pruned*100))
     net = get_pruned_resnet50(norm_ord=2, ratio=args.ratio_pruned)
     print(f"model: ResNet50-pruned with ratio {args.ratio_pruned}")
+elif args.model == "cred":
+    from modules.cred import CRED
+    net = CRED(batch_size=batch_size, size=224)
+    print("model: CRED")
+elif args.model == "hajar":
+    from modules.hajar import HAJAR
+    net = HAJAR(batch_size=batch_size, size=224)
+    print("model: HAJAR")
+elif args.model == "kaelynn":
+    from modules.kaelynn import KAELYNN
+    net = KAELYNN()
+    print("model: KAELYNN")
+   
 
 #net = ResNet50(num_classes=num_class)#MobileNetV2(ch_in=3, n_classes=num_class)#ResNet50(num_classes=len(classes))
 net = net.to(device)
@@ -109,9 +125,10 @@ def train(epoch):
         optimizer.zero_grad()
         
         outputs = net(inputs)
-        
+        #print(outputs.shape)
         loss = criterion(outputs, targets)
         
+        #with torch.autograd.set_detect_anomaly(True):
         loss.backward()
         optimizer.step()
 

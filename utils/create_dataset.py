@@ -68,19 +68,25 @@ def get_transform(img_size):
     ])
     return transform
 
-def generate_data_loader(root_dir, annotation_file, img_size, batch_size, transform=None, val_split=0.10):
+def generate_data_loader(root_dir, annotation_file, img_size, batch_size, transform=None, val_split=0.10, split_loader=True):
     transform=get_transform(img_size=img_size)
     dataset = CharData(root_dir=root_dir, annotation_file=annotation_file,
                 transform=transform)
-    dataset = train_val_dataset(dataset, val_split=val_split)
-    train_loader = torch.utils.data.DataLoader(dataset["train"], batch_size=batch_size,
-                                            shuffle=True)
-    val_loader = torch.utils.data.DataLoader(dataset["val"], batch_size=batch_size,
-                                            shuffle=True)
+    if split_loader:
+        dataset = train_val_dataset(dataset, val_split=val_split)
+        train_loader = torch.utils.data.DataLoader(dataset["train"], batch_size=batch_size,
+                                                shuffle=True)
+        val_loader = torch.utils.data.DataLoader(dataset["val"], batch_size=batch_size,
+                                                shuffle=True)
 
-    #data_loader = torch.utils.data.DataLoader(dataset, batch_size=batch_size,
-    #                                       shuffle=True)
-    return train_loader, val_loader
+        #data_loader = torch.utils.data.DataLoader(dataset, batch_size=batch_size,
+        #                                       shuffle=True)
+        return train_loader, val_loader
+    else:
+        data_loader = torch.utils.data.DataLoader(dataset, batch_size=batch_size,
+                                                shuffle=True)
+        print(len(dataset))
+        return data_loader
 
 def imshow(img):
     img = img / 2 + 0.5  # unnormalize

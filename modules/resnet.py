@@ -138,6 +138,9 @@ class ResNet(nn.Module):
 
         return nn.Sequential(*layers)
 
+def ResNet18(img_channel=3, num_classes=1000):
+    return ResNet(block, [2, 2, 2, 2], img_channel, num_classes)
+
 
 def ResNet50(img_channel=3, num_classes=1000):
     return ResNet(block, [3, 4, 6, 3], img_channel, num_classes)
@@ -152,6 +155,10 @@ def ResNet152(img_channel=3, num_classes=1000):
 
 
 def test():
-    net = ResNet101(img_channel=3, num_classes=1000)
+    net = ResNet18(img_channel=3, num_classes=1000)
     y = net(torch.randn(4, 3, 224, 224)).to("cuda")
+    print(y)
     print(y.size())
+
+if __name__ == '__main__':
+    test()
